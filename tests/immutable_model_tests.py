@@ -244,8 +244,10 @@ class ErrorCheckingTest(unittest.TestCase):
                           lambda: M.universe('infinite', [(10, mol)]))
         self.assertRaises(ValueError,
                           lambda: M.universe('infinite', [(mol, 'water', 10)],
-                                             [(IN.zeros((3,3), N.float64),
-                                               IN.zeros((3,), N.float64))]))
+                                             frozenset([(IN.zeros((3,3),
+                                                                  N.float64),
+                                                         IN.zeros((3,),
+                                                                  N.float64))])))
 
     def test_configuration(self):
         mol = make_water_fragment()

@@ -477,7 +477,7 @@ class Polymer(Fragment):
 class Universe(MosaicObject, api.MosaicUniverse):
 
     def __init__(self, cell_shape, molecules,
-                 symmetry_transformations=(),
+                 symmetry_transformations=set(),
                  convention=''):
         self.cell_shape = cell_shape
         self.symmetry_transformations = symmetry_transformations
@@ -547,7 +547,9 @@ class Universe(MosaicObject, api.MosaicUniverse):
            and len(symmetry_transformations) > 0:
             raise ValueError("Symmetry transformations are allowed "
                              "only in periodic universes")
-        api.validate_sequence(symmetry_transformations, tuple,
+        api.validate_type(symmetry_transformations, set,
+                          "symmetry_transformations")
+        api.validate_sequence(tuple(symmetry_transformations), tuple,
                               "symmetry_transformations",
                               ((lambda p: len(p) == 2, "must have length 2"),
                                (lambda p: hasattr(p[0], 'shape')
@@ -977,7 +979,7 @@ class Factory(AbstractFactory):
 
         return Universe(universe.cell_shape,
                         [(fragment(f), n) for f, n in universe.molecules],
-                        universe.symmetry_transformations,
+                        set(universe.symmetry_transformations),
                         universe.convention)
 
     @handler(api.MosaicProperty)

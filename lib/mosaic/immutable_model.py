@@ -392,7 +392,9 @@ class Universe(Immutable, api.MosaicUniverse):
                                           and isinstance(p[2], int),
                                 "elements must be (fragment, label, count) "
                                 "triples")))
-        api.validate_sequence(symmetry_transformations, ImmutableTuple,
+        api.validate_type(symmetry_transformations, frozenset,
+                          "symmetry_transformations")
+        api.validate_sequence(tuple(symmetry_transformations), tuple,
                               "symmetry_transformations",
                               ((lambda p: len(p) == 2, "must have length 2"),
                                (lambda p: hasattr(p[0], 'shape')
@@ -497,7 +499,7 @@ class Universe(Immutable, api.MosaicUniverse):
         return sum(self._site_counts)
 
 universe = lambda cell_shape, molecules, \
-                    symmetry_transformations=(), convention='': \
+                    symmetry_transformations=frozenset(), convention='': \
             _lookup(Universe, (cell_shape, molecules,
                                symmetry_transformations, convention))
 
@@ -844,7 +846,7 @@ class Factory(AbstractFactory):
         return universe(mosaic_universe.cell_shape,
                         tuple((make_fragment(f), f.label, n)
                               for f, n in mosaic_universe.molecules),
-                        mosaic_universe.symmetry_transformations,
+                        frozenset(mosaic_universe.symmetry_transformations),
                         mosaic_universe.convention)
 
     @handler(api.MosaicProperty)
