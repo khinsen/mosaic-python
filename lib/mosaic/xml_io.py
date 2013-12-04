@@ -400,9 +400,9 @@ class XMLReader(XMLStore):
           tuple(self._parse_molecule(el_m)
                 for el_m in el.iter('molecule'))
         symmetry_transformations = \
-          tuple((self._array((3, 3), N.float64, el_t.find('rotation').text),
-                 self._array((3,), N.float64, el_t.find('translation').text))
-                for el_t in el.iter('transformation'))
+          set((self._array((3, 3), N.float64, el_t.find('rotation').text),
+               self._array((3,), N.float64, el_t.find('translation').text))
+              for el_t in el.iter('transformation'))
         return im.universe(el.get('cell_shape'),
                            molecules,
                            symmetry_transformations,

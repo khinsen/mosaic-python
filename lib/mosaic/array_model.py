@@ -207,7 +207,7 @@ class Universe(api.MosaicUniverse):
 
     @property
     def symmetry_transformations(self):
-        return tuple(tuple(t) for t in self._symmetry_transformations)
+        return set(tuple(t) for t in self._symmetry_transformations)
 
     @property
     def convention(self):

@@ -539,7 +539,7 @@ class MosaicFragment(collections.Mapping):
 #
 # - the cell shape
 #
-# - a list of symmetry transformations
+# - a set of symmetry transformations
 #
 # - the chemical structure of its contents
 #
@@ -565,7 +565,7 @@ class MosaicUniverse(MosaicDataItem):
 
     @abstractproperty
     def symmetry_transformations(self):
-        """A sequence of symmetry transformations, possibly empty.
+        """A set of symmetry transformations, possibly empty.
         Each symmetry tranformation is defined by a two-element tuple,
         whose first item is a rotation matrix and whose second item
         is a translation vector.
@@ -663,14 +663,16 @@ class MosaicUniverse(MosaicDataItem):
             raise ValueError("naming conventions differ: %s != %s"
                              % (repr(self.convention),
                                 repr(other.convention)))
-        for (r1, t1), (r2, t2) in zip(self.symmetry_transformations,
-                                      other.symmetry_transformations):
-            if (r1 != r2).any():
-                raise ValueError("rotation matrices differ: %s != %s"
-                                 % (str(r1), str(r2)))
-            if (t1 != t2).any():
-                raise ValueError("translation vectors differ: %s != %s"
-                                 % (str(t1), str(t2)))
+        # Direct comparison of symmetry_transformation sets is impossible
+        # because the sets contain tuples of arrays.
+        st_self = set((tuple(r.flat), tuple(t))
+                      for r, t in self.symmetry_transformations)
+        st_other = set((tuple(r.flat), tuple(t))
+                       for r, t in other.symmetry_transformations)
+        if st_self != st_other:
+            raise ValueError("symmetry transformations differ: %s != %s"
+                             % (repr(self.symmetry_transformations),
+                                repr(other.symmetry_transformations)))
         for (sf, sc), (of, oc) in zip(self.molecules, other.molecules):
             sf.validate_equivalence(of)
             if sc != oc:
@@ -703,7 +705,10 @@ class MosaicUniverse(MosaicDataItem):
                        self._cell_parameter_array_shapes.keys(),
                        "Universe.cell_shape")
         validate_label(self.convention, "Universe.convention")
-        validate_sequence(self.symmetry_transformations,
+        validate_type(self.symmetry_transformations,
+                       collections.Set,
+                      "Universe.symmetry_transformations")
+        validate_sequence(tuple(self.symmetry_transformations),
                           collections.Sequence,
                           "Universe.symmetry_transformations",
                           ((lambda t: len(t) == 2,
