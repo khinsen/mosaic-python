@@ -228,9 +228,10 @@ class Fragment(Immutable, collections.Mapping):
 
         self.attrs = ImmutableDict(IT.chain(fragments, atoms))
 
-        api.validate_sequence(bonds, tuple, "bonds",
-                              ((lambda p: len(p) == 3, "must have length 3"),))
-        for a1, a2, order in bonds:
+        api.validate_type(bonds, frozenset, "bonds")
+        api.validate_sequence(tuple(bonds), tuple, "bonds",
+                              ((lambda p: len(p) == 2, "must have length 2"),))
+        for (a1, a2), order in bonds:
             self._validate_bond_atom(a1)
             self._validate_bond_atom(a2)
             if a1.split('.')[0] == a2.split('.')[0]:
@@ -264,15 +265,10 @@ class Fragment(Immutable, collections.Mapping):
                        for s, o in zip(self.fragments, other.fragments)) \
                and all(s == o
                        for s, o in zip(self.atoms, other.atoms)) \
-               and frozenset([(frozenset([a1, a2]), o)
-                              for a1, a2, o in self.bonds]) == \
-                   frozenset([(frozenset([a1, a2]), o)
-                              for a1, a2, o in other.bonds])
+               and self.bonds == other.bonds
 
     def __hash__(self):
-        # Don't use bonds in hash because the bond list can be
-        # different for fragments that test equal.
-        return hash((self.species, self.fragments, self.atoms))
+        return hash((self.species, self.fragments, self.atoms, self.bonds))
 
     # Mapping interface
 

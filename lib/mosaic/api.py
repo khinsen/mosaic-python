@@ -225,7 +225,7 @@ class MosaicAtom(object):
 #
 #  - a list of atoms
 #
-#  - a list of bonds
+#  - a set of bonds
 #
 #  - the boolean flag is_polymer. Polymer fragments have an emtpy
 #    atom list and an additional attribute 'polymer_type' whose
@@ -283,8 +283,9 @@ class MosaicFragment(collections.Mapping):
 
     @abstractproperty
     def bonds(self):
-        """Sequence of bonds, may be empty. Each bond is
-        repreented by a tuple (atom_ref_1, atom_ref_2, bond_order).
+        """Set of bonds, may be empty. Each bond is
+        repreented by a tuple (atom_refs, bond_order), where atom_refs
+        is a set of two atom references.
         See the :ref:`data model documentation<mosaic-fragment-bonds>`
         and the :ref:`bond reference documentation<mosaic-bonds>`.
         """
@@ -360,13 +361,9 @@ class MosaicFragment(collections.Mapping):
             s.validate_equivalence(o)
         for s, o in zip(self.atoms, other.atoms):
             s.validate_equivalence(o)
-        if self._bond_set() != other._bond_set():
+        if self.bonds != other.bonds:
             raise ValueError("bonds differ: %s != %s"
-                             % (repr(self._bond_set), repr(other._bond_set)))
-
-    def _bond_set(self):
-        return frozenset((frozenset((a1, a2)), order)
-                         for a1, a2, order in self.bonds)
+                             % (repr(self.bonds), repr(other.bonds)))
 
     def is_equivalent(self, other):
         """Check for equivalence of Python objects representing
@@ -454,8 +451,8 @@ class MosaicFragment(collections.Mapping):
         """
         for f in self.fragments:
             l = f.label
-            for a1, a2, order in f.recursive_bond_iterator():
-                yield (l + '.' + a1, l + '.' + a2, order)
+            for (a1, a2), order in f.recursive_bond_iterator():
+                yield (frozenset([l + '.' + a1, l + '.' + a2]), order)
         for b in self.bonds:
             yield b
 
@@ -758,7 +755,8 @@ class MosaicUniverse(MosaicDataItem):
         """Returns an integer array of shape (N, 2), where N
         is the total number of bonds in the universe. The entries
         [i, 0] and [i, 1] refer to the two atoms that are connected
-        by bond i. The entry [i, 0] is smaller than the entry [i, 1].
+        by bond i. The entry [i, 0] is smaller than the entry [i, 1],
+        and entry [i, 0] is smaller than entry [i+1, 0].
 
         :returns: the bond index array
         :rtype: numpy.ndarray
@@ -768,10 +766,12 @@ class MosaicUniverse(MosaicDataItem):
         for fragment, count in self.molecules:
             f_paths = list(fragment.recursive_atom_path_iterator())
             f_bonds = [sorted((f_paths.index(a1), f_paths.index(a2)))
-                       for a1, a2, order in fragment.recursive_bond_iterator()]
+                       for (a1, a2), order in
+                                    fragment.recursive_bond_iterator()]
             for _ in range(count):
                 bonds.extend([(natoms+a1, natoms+a2) for a1, a2 in f_bonds])
                 natoms += len(f_paths)
+        bonds.sort()
         return N.array(bonds)
 
     def site_to_atom_index_mapping(self):

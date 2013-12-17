@@ -17,6 +17,9 @@ import mosaic.mutable_model as M
 import mosaic.array_model as AM
 from mosaic.api import is_valid
 
+def bonds(*bs):
+    return frozenset((frozenset([a1, a2]), order) for a1, a2, order in bs)
+
 class UniverseTest(unittest.TestCase):
 
     def setUp(self):
@@ -25,7 +28,7 @@ class UniverseTest(unittest.TestCase):
                          (M.Atom("H1", M.Element("H")),
                           M.Atom("H2", M.Element("H")),
                           M.Atom("O",  M.Element("O"), 2)),
-                         (("H1", "O", "single"), ("H2", "O", "single")))
+                         bonds(("H1", "O", "single"), ("H2", "O", "single")))
         self.universe = M.Universe('infinite', [(mol, 10)],
                                    convention='my_own')
         self.am_universe = self.factory(self.universe)

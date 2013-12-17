@@ -21,6 +21,9 @@ import mosaic.mutable_model as MM
 import mosaic.array_model as AM
 from mosaic.api import is_valid
 
+def bonds(*bs):
+    return frozenset((frozenset([a1, a2]), order) for a1, a2, order in bs)
+
 class WaterTest(unittest.TestCase):
 
     def make_mutable_universe(self):
@@ -28,7 +31,7 @@ class WaterTest(unittest.TestCase):
                             (MM.Atom("H1", MM.Element("H"), 8),
                              MM.Atom("H2", MM.Element("H"), 8),
                              MM.Atom("O",  MM.Element("O"), 2)),
-                            (("H1", "O", "single"), ("H2", "O", "single")))
+                            bonds(("H1", "O", "single"), ("H2", "O", "single")))
         return MM.Universe('infinite', [(water, 10)],
                            convention='my_own')
 
@@ -37,7 +40,7 @@ class WaterTest(unittest.TestCase):
                             (("H1", IM.atom(IM.element("H"), 8)),
                              ("H2", IM.atom(IM.element("H"), 8)),
                              ("O",  IM.atom(IM.element("O"), 2))),
-                            (("H1", "O", "single"), ("H2", "O", "single")))
+                            bonds(("H1", "O", "single"), ("H2", "O", "single")))
         return IM.universe('infinite', [(water, "solvent", 10)],
                            convention='my_own')
 
@@ -65,35 +68,36 @@ class PeptideTest(unittest.TestCase):
                                      MM.Atom('N', N),
                                      MM.Atom('C', C),
                                      MM.Atom('O', O)),
-                                    (('N', 'H', "single"),
-                                     ('N', 'CA', "single"),
-                                     ('CA', 'HA', "single"),
-                                     ('CA', 'C', "single"),
-                                     ('C', 'O', "double")))
+                                    bonds(('N', 'H', "single"),
+                                          ('N', 'CA', "single"),
+                                          ('CA', 'HA', "single"),
+                                          ('CA', 'C', "single"),
+                                          ('C', 'O', "double")))
         ala_sidechain = MM.Fragment('sidechain', 'ala_sidechain',
                                     (),
                                     (MM.Atom('CB', C),
                                      MM.Atom('HB1', H),
                                      MM.Atom('HB2', H),
                                      MM.Atom('HB3', H)),
-                                    (('CB', 'HB1', "single"),
-                                     ('CB', 'HB2', "single"),
-                                     ('CB', 'HB3', "single"),))
+                                    bonds(('CB', 'HB1', "single"),
+                                          ('CB', 'HB2', "single"),
+                                          ('CB', 'HB3', "single"),))
         ala = lambda label: MM.Fragment(label, 'alanine',
                                         (copy.copy(peptide_group),
                                          copy.copy(ala_sidechain)),
                                         (),
-                                        (('peptide.CA', 'sidechain.CB',
-                                          "single"),))
+                                        bonds(('peptide.CA', 'sidechain.CB',
+                                               "single"),))
         di_ala = MM.Polymer('di_ala', 'alanine_dipeptide',
                             (ala('ALA1'), ala('ALA2')),
-                            (('ALA1.peptide.C', 'ALA2.peptide.N', "single"),),
+                            bonds(('ALA1.peptide.C', 'ALA2.peptide.N',
+                                   "single"),),
                             'polypeptide')
         water = MM.Fragment("solvent", "water", (),
                             (MM.Atom("H1", MM.Element("H"), 8),
                              MM.Atom("H2", MM.Element("H"), 8),
                              MM.Atom("O",  MM.Element("O"), 2)),
-                            (("H1", "O", "single"), ("H2", "O", "single")))
+                            bonds(("H1", "O", "single"), ("H2", "O", "single")))
         return MM.Universe('cube', [(di_ala, 1), (water, 10)],
                            convention='my_own')
 
@@ -110,35 +114,36 @@ class PeptideTest(unittest.TestCase):
                                      ('N', IM.atom(N)),
                                      ('C', IM.atom(C)),
                                      ('O', IM.atom(O))),
-                                    (('N', 'H', "single"),
-                                     ('N', 'CA', "single"),
-                                     ('CA', 'HA', "single"),
-                                     ('CA', 'C', "single"),
-                                     ('C', 'O', "double")))
+                                    bonds(('N', 'H', "single"),
+                                          ('N', 'CA', "single"),
+                                          ('CA', 'HA', "single"),
+                                          ('CA', 'C', "single"),
+                                          ('C', 'O', "double")))
         ala_sidechain = IM.fragment('ala_sidechain',
                                     (),
                                     (('CB', IM.atom(C)),
                                      ('HB1', IM.atom(H)),
                                      ('HB2', IM.atom(H)),
                                      ('HB3', IM.atom(H))),
-                                    (('CB', 'HB1', "single"),
-                                     ('CB', 'HB2', "single"),
-                                     ('CB', 'HB3', "single"),))
+                                    bonds(('CB', 'HB1', "single"),
+                                          ('CB', 'HB2', "single"),
+                                          ('CB', 'HB3', "single"),))
         ala = IM.fragment('alanine',
                           (('peptide', peptide_group),
                            ('sidechain', ala_sidechain)),
                           (),
-                          (('peptide.CA', 'sidechain.CB', "single"),))
+                          bonds(('peptide.CA', 'sidechain.CB', "single"),))
         di_ala = IM.polymer('alanine_dipeptide',
                             (('ALA1', ala),
                              ('ALA2', ala)),
-                            (('ALA1.peptide.C', 'ALA2.peptide.N', "single"),),
+                            bonds(('ALA1.peptide.C', 'ALA2.peptide.N',
+                                   "single"),),
                             'polypeptide')
         water = IM.fragment("water", (),
                             (("H1", IM.atom(H, 8)),
                              ("H2", IM.atom(H, 8)),
                              ("O",  IM.atom(O, 2))),
-                            (("H1", "O", "single"), ("H2", "O", "single")))
+                            bonds(("H1", "O", "single"), ("H2", "O", "single")))
         return IM.universe('cube',
                            [(di_ala, "di_ala", 1),
                             (water, "solvent", 10)],

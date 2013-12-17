@@ -109,7 +109,7 @@ class Universe(api.MosaicUniverse):
                 iatom += 1
                 isite += a.number_of_sites
             bonds = []
-            for a1, a2, order in f.bonds:
+            for (a1, a2), order in f.bonds:
                 i1 = atom_index['.'.join([path, a1])]
                 i2 = atom_index['.'.join([path, a2])]
                 if i1 > i2:
@@ -334,7 +334,7 @@ class Fragment(api.MosaicFragment):
                 ip = universe._fragment_array[ip]['parent_index']
             return anc
 
-        bonds = []
+        bonds = set()
         for ia1, ia2, iorder in universe._bond_array[
                                 ['atom_index_1', 'atom_index_2',
                                  'bond_order_symbol_index']]:
@@ -352,11 +352,13 @@ class Fragment(api.MosaicFragment):
                 p2 = [universe._fragment_array[if2]['label_symbol_index']
                       for if2 in anc2]
                 p2.append(universe._atom_array[ia2]['label_symbol_index'])
-                bonds.append(('.'.join(universe._symbols[l] for l in p1),
-                              '.'.join(universe._symbols[l] for l in p2),
-                              universe._symbols[iorder]))
+                bonds.add((frozenset(('.'.join(universe._symbols[l]
+                                               for l in p1),
+                                      '.'.join(universe._symbols[l]
+                                               for l in p2))),
+                           universe._symbols[iorder]))
 
-        return tuple(bonds)
+        return frozenset(bonds)
 
     @property
     def is_polymer(self):

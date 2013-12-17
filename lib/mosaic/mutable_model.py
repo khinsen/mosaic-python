@@ -17,6 +17,7 @@ can become inconsistent if not used carefully.
 #-----------------------------------------------------------------------------
 
 import copy
+import collections
 import itertools as IT
 import types
 
@@ -252,14 +253,14 @@ class Atom(MolecularStructureObject, api.MosaicAtom):
 
 class Fragment(MolecularStructureObject, api.MosaicFragment):
 
-    def __init__(self, label, species, fragments=[], atoms=[], bonds=[]):
+    def __init__(self, label, species, fragments=[], atoms=[], bonds=set()):
         self.label = label
         self.species = species
 
         self._parent = None
         self._fragments = []
         self._atoms = []
-        self._bonds = []
+        self._bonds = set()
         self._attrs = {}
 
         self.add_fragments(fragments)
@@ -289,18 +290,17 @@ class Fragment(MolecularStructureObject, api.MosaicFragment):
         self._atoms.extend(atoms)
 
     def add_bonds(self, bonds):
-        api.validate_sequence(bonds, tuple, "bonds",
-                              ((lambda p: len(p) == 3,
-                                "must have length  3"),
-                               (lambda p: (isinstance(p[0], str)
-                                           or isinstance(p[0], Atom))
-                                          and (isinstance(p[1], str)
-                                               or isinstance(p[1], Atom)),
-                                "elements must be strings or atoms"),
-                               (lambda p: p[2] in self._bond_orders,
+        api.validate_type(bonds, collections.Set, "bonds")
+        api.validate_sequence(tuple(bonds), tuple, "bonds",
+                              ((lambda p: len(p) == 2,
+                                "must have length  2"),
+                               (lambda p: isinstance(p[0], collections.Set)
+                                          and len(p[0])==2,
+                                "must be set of two atom references"),
+                               (lambda p: p[1] in self._bond_orders,
                                 "bond order must be one of "
                                 + str(self._bond_orders))))
-        for a1, a2, order in bonds:
+        for (a1, a2), order in bonds:
             atom1 = self._get_atom(a1)
             atom2 = self._get_atom(a2)
             if atom1 is atom2:
@@ -308,7 +308,7 @@ class Fragment(MolecularStructureObject, api.MosaicFragment):
                                  % str(atom1.full_path()))
             p = self.common_ancestor((atom1, atom2))
             if p is self:
-                self._bonds.append((atom1, atom2, order))
+                self._bonds.add((frozenset([atom1, atom2]), order))
             else:
                 raise ValueError("bond %s-%s must be defined in fragment %s"
                                  % (str(atom1.full_path()),
@@ -332,15 +332,9 @@ class Fragment(MolecularStructureObject, api.MosaicFragment):
         return Fragment(self._label, self._species,
                         copy.deepcopy(self._fragments, memo),
                         copy.deepcopy(self._atoms, memo),
-                        tuple((str(self.path_to(a1)),
-                               str(self.path_to(a2)),
-                               order)
-                              for a1, a2, order in self._bonds))
+                        copy.deepcopy(self._bonds, memo))
 
     def eq_structure(self, other):
-        def bond_path_set(frag):
-            set(tuple(sorted((a1, a2)) + [order])
-                for a1, a2, order in frag.bonds)
         return self.species == other.species \
                and len(self.fragments) == len(other.fragments) \
                and len(self.atoms) == len(other.atoms) \
@@ -348,7 +342,7 @@ class Fragment(MolecularStructureObject, api.MosaicFragment):
                and all(f1 == f2
                        for f1, f2 in zip(self.fragments, other.fragments)) \
                and all(a1 == a2 for a1, a2 in zip(self.atoms, other.atoms)) \
-               and bond_path_set(self) == bond_path_set(other)
+               and self.bonds == other.bonds
 
     def __eq__(self, other):
         return isinstance(other, Fragment) \
@@ -421,11 +415,12 @@ class Fragment(MolecularStructureObject, api.MosaicFragment):
 
     @property
     def bonds(self):
-        return tuple((str(self.path_to(a1)),
-                      str(self.path_to(a2)),
-                      order)
-                     for a1, a2, order in self._bonds)
-
+        bs = set()
+        for (a1, a2), order in self._bonds:
+            bs.add((frozenset([str(self.path_to(a1)),
+                               str(self.path_to(a2))]),
+                    order))
+        return bs
 
 class Polymer(Fragment):
 

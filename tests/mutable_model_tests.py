@@ -17,12 +17,15 @@ import numpy as N
 import mosaic.mutable_model as M
 from mosaic.api import is_valid
 
+def bonds(*bs):
+    return frozenset((frozenset([a1, a2]), order) for a1, a2, order in bs)
+
 def make_water_fragment(nsites=1):
     return M.Fragment("solvent", "water", (),
                       (M.Atom("H1", M.Element("H"), nsites),
                        M.Atom("H2", M.Element("H"), nsites),
                        M.Atom("O",  M.Element("O"), nsites)),
-                      (("H1", "O", "single"), ("H2", "O", "single")))
+                      bonds(("H1", "O", "single"), ("H2", "O", "single")))
 
 class AtomDescriptorTest(unittest.TestCase):
 
@@ -85,14 +88,14 @@ class WaterTest(unittest.TestCase):
                                         (M.Atom("H1", M.Element("H")),
                                          M.Atom("H2", M.Element("H")),
                                          M.Atom("O",  M.Element("O"))),
-                                        (("O", "H2", "single"),
-                                         ("O", "H1", "single")))
+                                        bonds(("O", "H2", "single"),
+                                              ("O", "H1", "single")))
         changed_atom_order = M.Fragment("solvent", "water", (),
                                         (M.Atom("O",  M.Element("O")),
                                          M.Atom("H1", M.Element("H")),
                                          M.Atom("H2", M.Element("H"))),
-                                        (("O", "H1", "single"),
-                                         ("O", "H2", "single")))
+                                        bonds(("O", "H1", "single"),
+                                              ("O", "H2", "single")))
         self.assertEqual(self.mol, self.mol)
         self.assertTrue(self.mol.is_equivalent(self.mol))
         self.assertEqual(self.mol, mol_copy)
@@ -120,29 +123,29 @@ class PeptideTest(unittest.TestCase):
                                     M.Atom('N', N),
                                     M.Atom('C', C),
                                     M.Atom('O', O)),
-                                   (('N', 'H', "single"),
-                                    ('N', 'CA', "single"),
-                                    ('CA', 'HA', "single"),
-                                    ('CA', 'C', "single"),
-                                    ('C', 'O', "double")))
+                                   bonds(('N', 'H', "single"),
+                                         ('N', 'CA', "single"),
+                                         ('CA', 'HA', "single"),
+                                         ('CA', 'C', "single"),
+                                         ('C', 'O', "double")))
         ala_sidechain = M.Fragment('sidechain', 'ala_sidechain',
                                    (),
                                    (M.Atom('CB', C),
                                     M.Atom('HB1', H),
                                     M.Atom('HB2', H),
                                     M.Atom('HB3', H)),
-                                   (('CB', 'HB1', "single"),
-                                    ('CB', 'HB2', "single"),
-                                    ('CB', 'HB3', "single"),))
+                                   bonds(('CB', 'HB1', "single"),
+                                         ('CB', 'HB2', "single"),
+                                         ('CB', 'HB3', "single"),))
         ala = lambda label: M.Fragment(label, 'ala',
                                        (copy.copy(peptide_group),
                                         copy.copy(ala_sidechain)),
                                        (),
-                                       (('peptide.CA', 'sidechain.CB',
-                                         "single"),))
+                                       bonds(('peptide.CA', 'sidechain.CB',
+                                              "single"),))
         return M.Polymer(label, 'alanine_dipeptide',
                          (ala('ALA1'), ala('ALA2')),
-                         (('ALA1.peptide.C', 'ALA2.peptide.N', "single"),),
+                         bonds(('ALA1.peptide.C', 'ALA2.peptide.N', "single"),),
                          'polypeptide')
 
     def test_basic(self):
@@ -171,7 +174,7 @@ class PeptideTest(unittest.TestCase):
         self.assertEqual(len(atoms), mol.number_of_atoms)
         bonds = tuple(mol.recursive_bond_iterator())
         self.assertEqual(len(bonds), mol.number_of_bonds)
-        for a1, a2, order in bonds:
+        for (a1, a2), order in bonds:
             for a in a1, a2:
                 node = mol
                 for p in a.split('.'):
@@ -230,55 +233,47 @@ class ErrorCheckingTest(unittest.TestCase):
                                              (M.Atom("C", carbon),
                                               M.Atom("C", carbon)),
                                              ()))
-        # Illegal bond lists
+        # Illegal bond sets
         atom = M.Atom("C", carbon)
         self.assertRaises(TypeError,
                           lambda: M.Fragment('m', 'm', (), (atom,), None))
         atom = M.Atom("C", carbon)
         self.assertRaises(TypeError,
                           lambda: M.Fragment('m', 'm', (), (atom,), [1, 2, 3]))
-        atom = M.Atom("C", carbon)
+        atom1 = M.Atom("C", carbon)
+        atom2 = M.Atom("O", carbon)
         self.assertRaises(TypeError,
-                          lambda: M.Fragment('m', 'm', (), (atom,),
-                                             (('X', 'X'))))
-        atom = M.Atom("C", carbon)
-        self.assertRaises(TypeError,
-                          lambda: M.Fragment('m', 'm', (), (atom,),
-                                             (['X', 'X', 'single'])))
+                          lambda: M.Fragment('m', 'm', (), (atom1, atom2),
+                                             [('C', 'O', 'single')]))
+        atom1 = M.Atom("C", carbon)
+        atom2 = M.Atom("O", carbon)
+        self.assertRaises(ValueError,
+                          lambda: M.Fragment('m', 'm', (), (atom1, atom2),
+                                             set([('C', 'O', 'single')])))
         
     def test_bonds(self):
         carbon = lambda label: M.Atom(label, M.Element("C"))
-        # Bond specified by only one atom
-        self.assertRaises(ValueError,
+        # Bond specified by a one-element atom set
+        self.assertRaises(TypeError,
                           lambda: M.Fragment('m', 'm', (),
                                              (carbon('C1'), carbon('C2')),
-                                             (('C1', ),)))
+                                             set(['C1'])))
         # Bond specified by two atoms but no bond order
-        self.assertRaises(ValueError,
+        self.assertRaises(TypeError,
                           lambda: M.Fragment('m', 'm', (),
                                              (carbon('C1'), carbon('C2')),
-                                             (('C1', 'C2'),)))
-        # Bond specified by two identical atoms
-        self.assertRaises(ValueError,
-                          lambda: M.Fragment('m', 'm', (),
-                                             (carbon('C1'), carbon('C2')),
-                                             (('C1', 'C1', ''),)))
+                                             set(['C1', 'C2'])))
         # Bond specified by an atom outside the fragment
         self.assertRaises(ValueError,
                           lambda: M.Fragment('m', 'm', (),
                                              (carbon('C1'), carbon('C2')),
-                                             (('C1', 'C3', ''),)))
-        # Bond specified by an atom name that is undefined
-        self.assertRaises(ValueError,
-                          lambda: M.Fragment('m', 'm', (),
-                                             (carbon('C1'), carbon('C2')),
-                                             (('C1', 'C3', ''),)))
+                                             set([(frozenset(['C1', 'C3']), '')])))
         # Bond specified at the wrong fragment level
-        f = M.Fragment('x', 'x', (), (carbon('C1'), carbon('C2')), ())
+        f = M.Fragment('x', 'x', (), (carbon('C1'), carbon('C2')), set())
         self.assertRaises(ValueError,
                           lambda: M.Fragment('m', 'm', (f,),
                                              (carbon('C3'),),
-                                             (('x.C1', 'x.C2', ''),)))
+                                             set([(frozenset(['x.C1', 'x.C2']), '')])))
 
     def test_universe(self):
         mol = make_water_fragment()

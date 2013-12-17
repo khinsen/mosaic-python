@@ -25,6 +25,8 @@ import mosaic.array_model
 from mosaic.api import is_valid
 from mosaic.hdf5 import HDF5Store
 
+def bonds(*bs):
+    return frozenset((frozenset([a1, a2]), order) for a1, a2, order in bs)
 
 class TestHDF5Store(object):
 
@@ -212,32 +214,32 @@ class MMPeptideTest(unittest.TestCase,
                                     M.Atom('N', N),
                                     M.Atom('C', C),
                                     M.Atom('O', O)),
-                                    (('N', 'H', 'single'),
-                                     ('N', 'CA', 'single'),
-                                     ('CA', 'HA', 'single'),
-                                     ('CA', 'C', 'single'),
-                                     ('C', 'O', 'double')))
+                                   bonds(('N', 'H', 'single'),
+                                         ('N', 'CA', 'single'),
+                                         ('CA', 'HA', 'single'),
+                                         ('CA', 'C', 'single'),
+                                         ('C', 'O', 'double')))
         ala_sidechain = M.Fragment('sidechain', 'ala_sidechain',
                                    (),
                                    (M.Atom('CB', C),
                                     M.Atom('HB1', H),
                                     M.Atom('HB2', H),
                                     M.Atom('HB3', H)),
-                                   (('CB', 'HB1', 'single'),
-                                    ('CB', 'HB2', 'single'),
-                                    ('CB', 'HB3', 'single'),))
+                                   bonds(('CB', 'HB1', 'single'),
+                                         ('CB', 'HB2', 'single'),
+                                         ('CB', 'HB3', 'single'),))
         ala = lambda label: M.Fragment(label, 'alanine',
                                        (copy.copy(peptide_group),
                                         copy.copy(ala_sidechain)),
                                        (),
-                                       (('peptide.CA',
-                                         'sidechain.CB',
-                                         'single'),))
+                                       bonds(('peptide.CA',
+                                              'sidechain.CB',
+                                              'single'),))
         ala_dipeptide = M.Polymer('di_ala', 'alanine_dipeptide',
                                   (ala('ALA1'), ala('ALA2')),
-                                  (('ALA1.peptide.C',
-                                    'ALA2.peptide.N',
-                                    'single'),),
+                                  bonds(('ALA1.peptide.C',
+                                         'ALA2.peptide.N',
+                                         'single'),),
                                   'polypeptide')
         self.cube_universe = M.Universe('cube', [(ala_dipeptide, 2)],
                                         convention='my_own')
@@ -270,29 +272,30 @@ class IMPeptideTest(unittest.TestCase,
                                     ('N', M.atom(N)),
                                     ('C', M.atom(C)),
                                     ('O', M.atom(O))),
-                                   (('N', 'H', "single"),
-                                    ('N', 'CA', "single"),
-                                    ('CA', 'HA', "single"),
-                                    ('CA', 'C', "single"),
-                                    ('C', 'O', "double")))
+                                   bonds(('N', 'H', "single"),
+                                         ('N', 'CA', "single"),
+                                         ('CA', 'HA', "single"),
+                                         ('CA', 'C', "single"),
+                                         ('C', 'O', "double")))
         ala_sidechain = M.fragment('ala_sidechain',
                                    (),
                                    (('CB', M.atom(C)),
                                     ('HB1', M.atom(H)),
                                     ('HB2', M.atom(H)),
                                     ('HB3', M.atom(H))),
-                                   (('CB', 'HB1', "single"),
-                                    ('CB', 'HB2', "single"),
-                                    ('CB', 'HB3', "single"),))
+                                   bonds(('CB', 'HB1', "single"),
+                                         ('CB', 'HB2', "single"),
+                                         ('CB', 'HB3', "single"),))
         ala = M.fragment('alanine',
                          (('peptide', peptide_group),
                           ('sidechain', ala_sidechain)),
                          (),
-                         (('peptide.CA', 'sidechain.CB', "single"),))
+                         bonds(('peptide.CA', 'sidechain.CB', "single"),))
         ala_dipeptide = M.polymer('alanine_dipeptide',
                                   (('ALA1', ala),
                                    ('ALA2', ala)),
-                                  (('ALA1.peptide.C', 'ALA2.peptide.N', "single"),),
+                                  bonds(('ALA1.peptide.C', 'ALA2.peptide.N',
+                                         "single"),),
                                   'polypeptide')
         self.cube_universe = M.universe('cube', ((ala_dipeptide, 'di_ala', 2),),
                                         convention='my_own')
@@ -314,7 +317,7 @@ class AtomicSystemTest(unittest.TestCase):
 
         M = self.M
         C = M.element('C')
-        atom = M.fragment('carbon', (), (('C', M.atom(C)),), ())
+        atom = M.fragment('carbon', (), (('C', M.atom(C)),), set())
         self.cube_universe = M.universe('cube', ((atom, 'carbons', 20),),
                                         convention='my_own')
         self.assertTrue(is_valid(self.cube_universe))

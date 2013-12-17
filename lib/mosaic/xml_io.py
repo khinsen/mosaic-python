@@ -244,7 +244,7 @@ class XMLWriter(XMLStore):
                 el_atoms.append(el_atom)
         if len(fragment.bonds) > 0:
             el_bonds = ET.SubElement(el, 'bonds')
-            for a1, a2, order in fragment.bonds:
+            for (a1, a2), order in fragment.bonds:
                 el_bonds.append(ET.Element('bond',
                                            atoms=a1 + ' ' + a2,
                                            order=order))
@@ -431,15 +431,17 @@ class XMLReader(XMLStore):
         for el_bonds in el.findall('bonds'):
             for el_b in el_bonds:
                 a1, a2 = el_b.get('atoms').split()
-                bonds.append((a1, a2, el_b.get('order')))
+                bonds.append((frozenset((a1, a2)), el_b.get('order')))
         label = el.get('label')
         species = el.get('species')
         polymer_type = el.get('polymer_type', None)
         if polymer_type is None:
-            return label, im.fragment(species, fragments, atoms, bonds)
+            return label, im.fragment(species, fragments, atoms,
+                                      frozenset(bonds))
         else:
             assert len(atoms) == 0
-            return label, im.polymer(species, fragments, bonds, polymer_type)
+            return label, im.polymer(species, fragments, frozenset(bonds),
+                                     polymer_type)
 
     @data_handler("configuration")
     def _read_configuration(self, el):
