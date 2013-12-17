@@ -30,6 +30,7 @@ import sys
 import traceback
 
 import numpy as np
+import immutable.np as inp
 
 from mosaic_pdb.mmcif import MMCIFParser
 
@@ -534,16 +535,16 @@ def symmetry_transformations(space_group):
     Convert the symmetry transformations for the crystal's space
     group to the right format.
     """
-    transformations = []
+    transformations = set()
     assert (space_group.transformations[0][0] ==
             np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])).all()
     assert (space_group.transformations[0][1] == np.array([0, 0, 0])).all()
     assert (space_group.transformations[0][2] == np.array([1, 1, 1])).all()
     for rot, tr_num, tr_den in space_group.transformations[1:]:
-        rot = np.array(rot, dtype=np.float64)
-        tr = np.array(tr_num, dtype=np.float64) / \
-             np.array(tr_den, dtype=np.float64)
-        transformations.append((rot, tr))
+        rot = inp.array(rot, dtype=np.float64)
+        tr = inp.array(tr_num, dtype=np.float64) / \
+             inp.array(tr_den, dtype=np.float64)
+        transformations.add((rot, tr))
     return transformations
 
 
