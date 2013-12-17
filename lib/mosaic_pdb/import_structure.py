@@ -377,7 +377,7 @@ def make_monomer(sites, site_properties):
                 label_parts.append(comp_id + '_' + str(i+1))
                 fragments.append(f)
                 unique_ids.extend(u)
-            bonds = ()  # !!! TODO
+            bonds = set()  # !!! TODO
             return Fragment('+'.join(label_parts), '+'.join(comp_ids),
                             fragments, (), bonds), \
                    unique_ids       
@@ -390,20 +390,20 @@ def make_monomer(sites, site_properties):
                        'trip': 'triple',
                        'quad': 'qudruple',
                        'arom': 'aromatic'}
-        bonds = tuple((x['atom_id_1'], x['atom_id_2'],
-                       bond_orders.get(x['value_order'].lower(), ''))
-                      for x in comp.bonds
-                      if x['atom_id_1'] in atom_ids
-                         and x['atom_id_2'] in atom_ids)
+        bonds = set([(frozenset([x['atom_id_1'], x['atom_id_2']]),
+                      bond_orders.get(x['value_order'].lower(), ''))
+                     for x in comp.bonds
+                     if x['atom_id_1'] in atom_ids
+                        and x['atom_id_2'] in atom_ids])
     else:
-        bonds = ()
+        bonds = set()
     if not comp_atom_ids.issuperset(atom_ids):
         if atom_ids.difference(comp_atom_ids) == set(["HO5'"]) \
            and "O5'" in atom_ids:
             # Provide a quick fix for a common case in the PDB, to avoid
             # having lots of DNA structures fail for a trivial reason
             comp_atom_ids.add("HO5'")
-            bonds = bonds + (("HO5'", "O5'", 'single'),)
+            bonds.add((frozenset(["HO5'", "O5'"]), 'single'),)
         else:
             # Variants exist only for amino acids. Find those that match
             # the atom_ids in the current monomer.
@@ -588,7 +588,7 @@ def make_crystal(structure, model_number, universes):
             residues = OrderedDict()
             for seq_id, comp_id in entity['sequence']:
                 f = Fragment(comp_id + '_' + str(seq_id), comp_id,
-                             (), (), ())
+                             (), (), set())
                 residues[seq_id] = f
                 monomer_fragments[(asym_id, seq_id)] = f
             # For residues that have sites, make non-empty fragments
@@ -632,9 +632,14 @@ def make_crystal(structure, model_number, universes):
             else:
                 raise ValueError("Polymer type %s not yet implemented"
                                  % polymer_type)
-            bonds = tuple((a1, a2, order)
-                          for a1, a2, order in bonds
-                          if a1 is not None and a2 is not None)
+            # !!! In the conversion to sets, all peptide bonds
+            # get reduced to the first one, because their atom objects
+            # compare as equal in the mutable model.
+            # Should bonds in the mutable model always be stored with
+            # paths???
+            bonds = set([(frozenset([a1, a2]), order)
+                         for a1, a2, order in bonds
+                         if a1 is not None and a2 is not None])
             polymer_types = {'polydeoxyribonucleotide/'
                                  'polyribonucleotide hybrid':
                              'polynucleotide'}
@@ -694,9 +699,9 @@ def make_crystal(structure, model_number, universes):
                            monomer_fragments[(asym2, seq2)].get('SG'),
                            'single')
                           for asym1, seq1, asym2, seq2 in bridges)
-            bonds = tuple((a1, a2, order)
-                          for a1, a2, order in bonds
-                          if a1 is not None and a2 is not None)
+            bonds = set([(frozenset([a1, a2]), order)
+                         for a1, a2, order in bonds
+                         if a1 is not None and a2 is not None])
             mol = Fragment('+'.join(f.label for f in fragments),
                            '+'.join(f.species for f in fragments),
                            fragments, (), bonds)

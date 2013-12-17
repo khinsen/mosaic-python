@@ -22,8 +22,9 @@ class PDB2ONXTest(unittest.TestCase):
 
     def test_equivalence(self):
         for name, data in self.pdb_model.items():
-            self.assertTrue(name in self.xml_model)
-            self.assertTrue(data.is_equivalent(self.xml_model[name]))
+            data.validate_equivalence(self.xml_model[name])
+            #self.assertTrue(name in self.xml_model)
+            #self.assertTrue(data.is_equivalent(self.xml_model[name]))
 
 def suite():
     loader = unittest.TestLoader()
