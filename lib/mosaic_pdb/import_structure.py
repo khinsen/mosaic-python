@@ -229,8 +229,13 @@ class MMCIFStructure(object):
         res_number = int(data[indices['num']])
         res_type = data[indices['mon_id']]
         if seq and res_number - seq[-1][0] != 1:
-            raise ValueError("non-consecutive residue numbers "
-                             "in entity_poly_seq")
+            if self.getYesNoField('hetero', indices, data) \
+               and res_number == seq[-1][0]:
+                # heterogeneous sequence
+                pass
+            else:
+                raise ValueError("non-consecutive residue numbers "
+                                 "in entity_poly_seq")
         seq.append((res_number, res_type))
 
     def addMolecule(self, indices, data):
